@@ -1,32 +1,44 @@
 import express from "express";
 import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
 
-import authRoutes from "./routes/auth.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import reportRoutes from "./routes/report.routes.js";
-import memberRoutes from "./routes/member.routes.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 
+/* =====================
+   MIDDLEWARE
+===================== */
 app.use(cors());
 app.use(express.json());
 
-// 🔥 THIS SERVES scan.html, dashboard.html
-app.use(express.static(path.join(__dirname, "../public")));
+/* =====================
+   STATIC FILES (FRONTEND)
+===================== */
+app.use(express.static("public"));
 
+/* =====================
+   API ROUTES
+===================== */
 app.use("/auth", authRoutes);
 app.use("/attendance", attendanceRoutes);
 app.use("/notify", notificationRoutes);
 app.use("/reports", reportRoutes);
-app.use("/members", memberRoutes);
-app.use(express.static("public"));
 
+/* =====================
+   ROOT HEALTH PAGE
+===================== */
+app.get("/", (req, res) => {
+  res.send(`
+    <h2>Raksha Fit Backend is Live 🚀</h2>
+    <ul>
+      <li><a href="/scan.html">Scan QR Page</a></li>
+      <li><a href="/dashboard.html">Owner Dashboard</a></li>
+      <li><a href="/notify/expired?gym_id=1">Health Check API</a></li>
+    </ul>
+  `);
+});
 
 export default app;
-
