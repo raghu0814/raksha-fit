@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Raksha Fit — Gym Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 15px auto;
+      width: 400px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    button {
+      margin-top: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    input {
+      width: 100%;
+      padding: 6px;
+      margin: 5px 0;
+    }
+    .msg {
+      background: #eef;
+      padding: 8px;
+      margin-top: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    a {
+      text-decoration: none;
+      color: blue;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🏋️ Raksha Fit — Gym Dashboard</h1>
+
+<!-- TODAY ATTENDANCE -->
+<div class="card">
+  <h3>📊 Today Attendance</h3>
+  <div id="todayCount">Loading...</div>
+</div>
+
+<!-- ADD MEMBER -->
+<div class="card">
+  <h3>➕ Add New Member</h3>
+  <input id="name" placeholder="Member Name" />
+  <input id="phone" placeholder="Phone Number" />
+  <input id="validTill" type="date" />
+  <button onclick="addMember()">Add Member</button>
+  <div id="addMemberMsg"></div>
+</div>
+
+<!-- ABSENT -->
+<div class="card">
+  <h3>❌ Absent Members</h3>
+  <button onclick="loadAbsent()">Load Absent</button>
+  <div id="absentList"></div>
+</div>
+
+<!-- EXPIRED -->
+<div class="card">
+  <h3>🔴 Expired Memberships</h3>
+  <button onclick="loadExpired()">Load Expired</button>
+  <div id="expiredList"></div>
+</div>
+
+<!-- EXPIRING -->
+<div class="card">
+  <h3>🟡 Expiring Soon</h3>
+  <button onclick="loadExpiring()">Load Expiring</button>
+  <div id="expiringList"></div>
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
