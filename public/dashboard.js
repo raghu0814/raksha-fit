@@ -1,90 +1,18 @@
-const gymId = 1; // demo gym
-
-// TODAY ATTENDANCE COUNT
-fetch(`/attendance/today?gym_id=${gymId}`)
-  .then(res => res.json())
-  .then(data => {
-    document.getElementById("todayCount").innerText =
-      `Total check-ins today: ${data.count}`;
-  })
-  .catch(() => {
-    document.getElementById("todayCount").innerText =
-      "Attendance API not connected";
-  });
-
-// ADD MEMBER
-function addMember() {
-  const name = document.getElementById("name").value;
-  const phone = document.getElementById("phone").value;
-  const validTill = document.getElementById("validTill").value;
-
-  fetch("/auth/members", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name,
-      phone,
-      gym_id: gymId,
-      start_date: new Date().toISOString().slice(0, 10),
-      valid_till: validTill
-    })
-  })
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("addMemberMsg").innerText =
-        "✅ Member added successfully";
-    })
-    .catch(() => {
-      document.getElementById("addMemberMsg").innerText =
-        "❌ Error adding member";
-    });
-}
-
-// ABSENT
-function loadAbsent() {
-  fetch(`/notify/absent?gym_id=${gymId}`)
-    .then(res => res.json())
-    .then(data => {
-      renderMessages("absentList", data.messages);
-    });
-}
-
-// EXPIRED
-function loadExpired() {
-  fetch(`/notify/expired?gym_id=${gymId}`)
-    .then(res => res.json())
-    .then(data => {
-      renderMessages("expiredList", data.messages);
-    });
-}
-
-// EXPIRING
-function loadExpiring() {
-  fetch(`/notify/expiring?gym_id=${gymId}`)
-    .then(res => res.json())
-    .then(data => {
-      renderMessages("expiringList", data.messages);
-    });
-}
-
-// COMMON RENDER
-function renderMessages(containerId, messages) {
-  const box = document.getElementById(containerId);
-  box.innerHTML = "";
-
-  if (messages.length === 0) {
-    box.innerHTML = "<p>No members</p>";
-    return;
-  }
-
-  messages.forEach(m => {
-    const waLink = `https://wa.me/91${m.phone}?text=${encodeURIComponent(m.message)}`;
-    const div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `
-      ${m.message}<br/>
-      <a href="${waLink}" target="_blank">📲 Send WhatsApp</a>
-    `;
-    box.appendChild(div);
-  });
-}
+const token=localStorage.getItem('raksha_token'); if(!token)location.href='index.html';
+const qs=s=>document.querySelector(s),state={plans:[]};
+const api=async(path,options={})=>{const r=await fetch('/api'+path,{...options,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(options.headers||{})}});if(r.status===401){localStorage.removeItem('raksha_token');location.href='index.html';throw Error('Session expired')}const d=r.headers.get('content-type')?.includes('application/json')?await r.json():null;if(!r.ok)throw Error(d?.message||'Request failed');return d};
+const toast=(text,bad=false)=>{const t=qs('#toast');t.textContent=text;t.className=bad?'show bad':'show';setTimeout(()=>t.className='',3500)};
+const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const money=v=>`Ã¢â€šÂ¹${Number(v||0).toLocaleString('en-IN',{maximumFractionDigits:0})}`;
+function memberAction(m){return `<div class="row"><div><b>${esc(m.name)}</b><small>${esc(m.phone)} Ã‚Â· <span class="badge ${m.membership_status.toLowerCase().replaceAll(' ','-')}">${m.membership_status}</span></small></div><div><button class="small edit" data-id="${m.id}">Edit</button><button class="small pay" data-id="${m.id}">Payment</button><button class="small checkin" data-id="${m.id}">Check in</button></div></div>`}
+async function loadDashboard(){const d=await api('/dashboard');qs('#metrics').innerHTML=[['Total members',d.counts.total],['Active members',d.counts.active],['Expiring soon',d.counts.expiring],['Expired',d.counts.expired],["Today's attendance",d.recent_attendance.length],["Today's revenue",money(d.revenue.today)],['Monthly revenue',money(d.revenue.month)]].map(([a,b])=>`<article class="metric"><small>${a}</small><strong>${b}</strong></article>`).join('');qs('#recentAttendance').innerHTML=d.recent_attendance.length?d.recent_attendance.map(x=>`<div class="row"><b>${esc(x.member_name)}</b><small>${new Date(x.check_in).toLocaleTimeString()}</small></div>`).join(''):'<p class="muted">No check-ins today.</p>';qs('#recentPayments').innerHTML=d.recent_payments.length?d.recent_payments.map(x=>`<div class="row"><b>${esc(x.member_name)}</b><small>${money(x.amount)} Ã‚Â· ${esc(x.payment_method)}</small></div>`).join(''):'<p class="muted">No payments yet.</p>';qs('#expiring').innerHTML=d.expiring.length?d.expiring.map(memberAction).join(''):'<p class="muted">No memberships expiring in 3 days.</p>';qs('#absent').innerHTML=d.absent.length?d.absent.map(memberAction).join(''):'<p class="muted">No absent members found.</p>';bindActions()}
+async function loadPlans(){state.plans=await api('/plans');qs('#planList').innerHTML=state.plans.length?state.plans.map(p=>`<article class="card"><h3>${esc(p.name)}</h3><strong>${money(p.price)}</strong><p>${p.duration_days} days</p></article>`).join(''):'<p class="muted">Create your first membership plan.</p>';const options='<option value="">No plan / manual expiry</option>'+state.plans.map(p=>`<option value="${p.id}">${esc(p.name)} Ã‚Â· ${p.duration_days} days Ã‚Â· ${money(p.price)}</option>`).join('');qs('#memberPlan').innerHTML=options;qs('#paymentPlan').innerHTML='<option value="">Record payment only</option>'+state.plans.map(p=>`<option value="${p.id}">${esc(p.name)} Ã‚Â· ${money(p.price)}</option>`).join('')}
+async function loadMembers(){const search=encodeURIComponent(qs('#memberSearch').value),status=qs('#memberFilter').value;const items=await api(`/members?search=${search}&status=${status}`);qs('#memberList').innerHTML=items.length?items.map(memberAction).join(''):'<p class="muted">No members match your search.</p>';bindActions()}
+function bindActions(){document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>editMember(b.dataset.id));document.querySelectorAll('.pay').forEach(b=>b.onclick=()=>{qs('#paymentForm').reset();qs('#paymentForm [name=member_id]').value=b.dataset.id;qs('#paymentDialog').showModal()});document.querySelectorAll('.checkin').forEach(b=>b.onclick=async()=>{try{toast((await api('/attendance',{method:'POST',body:JSON.stringify({member_id:b.dataset.id})})).message);loadDashboard()}catch(e){toast(e.message,true)}})}
+async function editMember(id){try{const m=await api('/members/'+id),f=qs('#memberForm');f.reset();Object.entries(m).forEach(([k,v])=>{if(f.elements[k]&&v!=null)f.elements[k].value=String(v).slice(0,10)});qs('#memberTitle').textContent='Edit member';qs('#memberDialog').showModal()}catch(e){toast(e.message,true)}}
+async function saveMember(e){e.preventDefault();const f=e.currentTarget,data=Object.fromEntries(new FormData(f));if(!data.id)delete data.id;if(!data.plan_id)delete data.plan_id;try{const path=data.id?'/members/'+data.id:'/members',method=data.id?'PATCH':'POST';await api(path,{method,body:JSON.stringify(data)});qs('#memberDialog').close();toast(data.id?'Member updated':'Member added');loadMembers();loadDashboard()}catch(err){toast(err.message,true)}}
+async function savePayment(e){e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));if(!data.plan_id)delete data.plan_id;try{const d=await api('/payments',{method:'POST',body:JSON.stringify(data)});qs('#paymentDialog').close();toast(d.member.valid_till?'Payment recorded and membership updated':'Payment recorded');loadDashboard();loadMembers()}catch(err){toast(err.message,true)}}
+async function loadQr(){const q=await api('/qr');qs('#qrUrl').textContent=q.checkin_url;const box=qs('#qrBox');box.innerHTML='';const image=document.createElement('img');image.src=q.qr_image_url;image.width=240;image.height=240;image.alt="Gym check-in QR code";box.appendChild(image)}
+async function downloadReport(type){try{const r=await fetch('/api/reports/'+type,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok){const d=await r.json();throw Error(d.message)}const blob=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`raksha-fit-${type}.xlsx`;a.click();URL.revokeObjectURL(a.href)}catch(e){toast(e.message,true)}}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));qs('#'+b.dataset.view).classList.add('active');if(b.dataset.view==='members')loadMembers();if(b.dataset.view==='plans')loadPlans();if(b.dataset.view==='qr')loadQr()});qs('#newMember').onclick=qs('#quickMember').onclick=()=>{qs('#memberForm').reset();qs('#memberTitle').textContent='Add member';qs('#memberDialog').showModal()};qs('#memberForm').onsubmit=saveMember;qs('#paymentForm').onsubmit=savePayment;qs('#planForm').onsubmit=async e=>{e.preventDefault();try{await api('/plans',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});e.currentTarget.reset();toast('Plan created');loadPlans()}catch(err){toast(err.message,true)}};qs('#memberSearch').oninput=loadMembers;qs('#memberFilter').onchange=loadMembers;document.querySelectorAll('.report').forEach(b=>b.onclick=()=>downloadReport(b.dataset.report));qs('#logout').onclick=()=>{localStorage.removeItem('raksha_token');location.href='index.html'};
+(async()=>{try{const me=await api('/me');qs('#ownerName').textContent=me.name;await Promise.all([loadPlans(),loadDashboard()])}catch(e){toast(e.message,true)}})();

@@ -1,44 +1,18 @@
 import express from "express";
 import cors from "cors";
-
-import attendanceRoutes from "./routes/attendance.routes.js";
-import authRoutes from "./routes/auth.routes.js";
-import notificationRoutes from "./routes/notification.routes.js";
-import reportRoutes from "./routes/report.routes.js";
+import apiRoutes from "./routes/api.routes.js";
 
 const app = express();
-
-/* =====================
-   MIDDLEWARE
-===================== */
-app.use(cors());
-app.use(express.json());
-
-/* =====================
-   STATIC FILES (FRONTEND)
-===================== */
-app.use(express.static("public"));
-
-/* =====================
-   API ROUTES
-===================== */
-app.use("/auth", authRoutes);
-app.use("/attendance", attendanceRoutes);
-app.use("/notify", notificationRoutes);
-app.use("/reports", reportRoutes);
-
-/* =====================
-   ROOT HEALTH PAGE
-===================== */
-app.get("/", (req, res) => {
-  res.send(`
-    <h2>Raksha Fit Backend is Live 🚀</h2>
-    <ul>
-      <li><a href="/scan.html">Scan QR Page</a></li>
-      <li><a href="/dashboard.html">Owner Dashboard</a></li>
-      <li><a href="/notify/expired?gym_id=1">Health Check API</a></li>
-    </ul>
-  `);
-});
-
+const origins = (process.env.FRONTEND_ORIGIN || "").split(",").map(x => x.trim()).filter(Boolean);
+app.disable("x-powered-by");
+app.use((req,res,next)=>{res.setHeader("X-Content-Type-Options","nosniff");res.setHeader("X-Frame-Options","DENY");res.setHeader("Referrer-Policy","strict-origin-when-cross-origin");res.setHeader("Permissions-Policy","camera=(self)");next();});
+app.use(cors({ origin: origins.length ? origins : false, methods:["GET","POST","PATCH","OPTIONS"], allowedHeaders:["Content-Type","Authorization"] }));
+app.use(express.json({ limit:"100kb" }));
+const authHits=new Map();
+app.use('/api/auth',(req,res,next)=>{const now=Date.now(),key=req.ip,bucket=(authHits.get(key)||[]).filter(t=>now-t<15*60_000);if(bucket.length>=20)return res.status(429).json({message:'Too many attempts. Please try again later.'});bucket.push(now);authHits.set(key,bucket);next();});
+app.use(express.static("public",{extensions:["html"]}));
+app.use('/api',apiRoutes);
+app.get('/',(_,res)=>res.sendFile(new URL('../public/index.html',import.meta.url).pathname));
+app.use((_,res)=>res.status(404).json({message:"Route not found"}));
+app.use((err,req,res,next)=>{console.error("API ERROR",err.message);res.status(err.status||500).json({message:err.status?err.message:"Something went wrong. Please try again."});});
 export default app;
