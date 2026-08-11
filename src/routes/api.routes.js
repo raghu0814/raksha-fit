@@ -1,7 +1,8 @@
 import express from "express";
 import * as api from "../controllers/api.controller.js";
-import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireAuth, allowRoles } from "../middleware/auth.middleware.js";
 import pool from "../config/db.js";
+import { runAutomation } from "../services/automation.js";
 const router=express.Router();
 router.post('/auth/register',api.register); router.post('/auth/login',api.login); router.post('/auth/logout',(_,res)=>res.status(204).end());
 router.post('/attendance/public-checkin',api.publicCheckin);
@@ -11,4 +12,7 @@ router.get('/members',api.listMembers);router.post('/members',api.createMember);
 router.get('/plans',api.listPlans);router.post('/plans',api.createPlan);router.post('/payments',api.recordPayment);
 router.post('/attendance',api.markAttendance);router.get('/templates',api.templates);router.post('/whatsapp/prepare',api.prepareWhatsApp);
 router.get('/reports/:type',api.report);router.get('/qr',async(req,res,next)=>{try{const {rows}=await pool.query('SELECT public_code,name FROM gyms WHERE id=$1',[req.user.gym_id]);if(!rows.length)return res.status(404).json({message:'Gym not found'});const checkin_url=`${req.protocol}://${req.get('host')}/checkin.html?gym=${rows[0].public_code}`;res.json({gym_code:rows[0].public_code,gym_name:rows[0].name,checkin_url,qr_image_url:`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(checkin_url)}`});}catch(e){next(e)}});
+router.get('/settings',allowRoles('owner'),api.getSettings);router.patch('/settings',allowRoles('owner'),api.updateSettings);
+router.get('/staff',allowRoles('owner'),api.listStaff);router.post('/staff',allowRoles('owner'),api.createStaff);router.patch('/staff/:id',allowRoles('owner'),api.updateStaff);
+router.post('/automation/run',allowRoles('owner'),async(req,res,next)=>{try{res.json(await runAutomation())}catch(e){next(e)}});
 export default router;

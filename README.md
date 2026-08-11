@@ -14,6 +14,8 @@ Raksha Fit is an Express and PostgreSQL gym-management MVP. It serves its owner 
 
 Set `DATABASE_URL`, `JWT_SECRET`, `PORT`, and optionally `FRONTEND_ORIGIN`. The application supports HTTPS deployments and does not require a browser-supplied `gym_id`.
 
+`GET /health` reports application/database health. Schedule `npm run automation` once daily using the deployment platform's cron facility; it only queues `pending_manual` notifications and never claims provider delivery.
+
 ## QR check-in
 
 The authenticated owner dashboard generates a gym-specific QR link. A member scans it with their phone camera, opens the check-in page, and enters their registered mobile number. The server resolves the gym from the QR code and enforces member status, membership expiry, and one check-in per calendar day.

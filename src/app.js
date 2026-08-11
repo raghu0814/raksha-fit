@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import apiRoutes from "./routes/api.routes.js";
+import pool from "./config/db.js";
 
 const app = express();
 const origins = (process.env.FRONTEND_ORIGIN || "").split(",").map(x => x.trim()).filter(Boolean);
@@ -11,6 +12,7 @@ app.use(express.json({ limit:"100kb" }));
 const authHits=new Map();
 app.use('/api/auth',(req,res,next)=>{const now=Date.now(),key=req.ip,bucket=(authHits.get(key)||[]).filter(t=>now-t<15*60_000);if(bucket.length>=20)return res.status(429).json({message:'Too many attempts. Please try again later.'});bucket.push(now);authHits.set(key,bucket);next();});
 app.use(express.static("public",{extensions:["html"]}));
+app.get('/health',async(req,res)=>{try{await pool.query('SELECT 1');res.json({status:'ok',database:'ok',time:new Date().toISOString()})}catch{res.status(503).json({status:'degraded',database:'unavailable',time:new Date().toISOString()})}});
 app.use('/api',apiRoutes);
 app.get('/',(_,res)=>res.sendFile(new URL('../public/index.html',import.meta.url).pathname));
 app.use((_,res)=>res.status(404).json({message:"Route not found"}));
